@@ -1,0 +1,101 @@
+---
+title: "Clustering_ITALY"
+author: "Baran Booyeh"
+date: "2025-03-05"
+output: html_document
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(FactoMineR)
+library(factoextra)
+library(cluster)
+library(readxl)
+library(dplyr)
+library(knitr)
+
+italy <- read_excel("C:/Users/BARAN/Desktop/Thesis/Data Sets/ITALY/number_region2.xlsx")
+
+df_italy <- as.data.frame(italy)
+
+df_italy2 <- df_italy[, !(colnames(df_italy) %in% c("TOTAL"))]
+rownames(df_italy2) <- df_italy[,1]
+df_italy2 <- df_italy2[,-1]
+
+df_italy2 <- df_italy2[!(rownames(df_italy2) %in% c("Apulia", "Trentino-South Tyrol")), ]
+
+df_italy2 <- df_italy2 / rowSums(df_italy2)
+
+ca_italy <- CA(df_italy2, graph = FALSE)
+
+dd_italy <- dist(ca_italy$row$coord[, 1:3], method = "euclidean")
+
+hc_ward <- hclust(dd_italy, method = "ward.D2")
+
+plot(hc_ward, main = "Hierarchical Clustering (Ward’s Method)", xlab = "", ylab = "Height")
+
+fviz_nbclust(ca_italy$row$coord[, 1:3], FUN = hcut, method = "wss")  
+
+hc_clusters_2 <- cutree(hc_ward, k = 2)
+hc_clusters_3 <- cutree(hc_ward, k = 3)
+hc_clusters_4 <- cutree(hc_ward, k = 4)
+
+set.seed(123)  
+kmeans_2 <- kmeans(ca_italy$row$coord[, 1:3], centers = 2, nstart = 25)
+kmeans_3 <- kmeans(ca_italy$row$coord[, 1:3], centers = 3, nstart = 25)
+kmeans_4 <- kmeans(ca_italy$row$coord[, 1:3], centers = 4, nstart = 25)
+kmeans_6 <- kmeans(ca_italy$row$coord[, 1:3], centers = 6, nstart = 25)
+
+sil_hc_2 <- silhouette(hc_clusters_2, dd_italy)
+sil_hc_3 <- silhouette(hc_clusters_3, dd_italy)
+sil_hc_4 <- silhouette(hc_clusters_4, dd_italy)
+sil_km_2 <- silhouette(kmeans_2$cluster, dd_italy)
+sil_km_3 <- silhouette(kmeans_3$cluster, dd_italy)
+sil_km_4 <- silhouette(kmeans_4$cluster, dd_italy)
+sil_km_6 <- silhouette(kmeans_6$cluster, dd_italy)
+
+silhouette_hc_2 <- mean(sil_hc_2[, 3])
+silhouette_hc_3 <- mean(sil_hc_3[, 3])
+silhouette_hc_4 <- mean(sil_hc_4[, 3])
+silhouette_km_2 <- mean(sil_km_2[, 3])
+silhouette_km_3 <- mean(sil_km_3[, 3])
+silhouette_km_4 <- mean(sil_km_4[, 3])
+silhouette_km_6 <- mean(sil_km_6[, 3])
+
+
+cat("Silhouette Scores:\n")
+cat("Hierarchical Clustering (k=2):", silhouette_hc_2, "\n")
+cat("Hierarchical Clustering (k=3):", silhouette_hc_3, "\n")
+cat("Hierarchical Clustering (k=4):", silhouette_hc_4, "\n")
+cat("K-Means Clustering (k=2):", silhouette_km_2, "\n")
+cat("K-Means Clustering (k=3):",
+    silhouette_km_3, "\n")
+cat("K-Means Clustering (k=4):", silhouette_km_4, "\n")
+cat("K-Means Clustering (k=6):", silhouette_km_6, "\n")
+
+fviz_silhouette(sil_hc_2) + ggtitle("Silhouette Plot - Hierarchical Clustering (k = 2)")
+fviz_silhouette(sil_hc_3) + ggtitle("Silhouette Plot - Hierarchical Clustering (k = 3)")
+fviz_silhouette(sil_hc_4) + ggtitle("Silhouette Plot - Hierarchical Clustering (k = 4)")
+fviz_silhouette(sil_km_2) + ggtitle("Silhouette Plot - K-Means (k = 2)")
+fviz_silhouette(sil_km_3) + ggtitle("Silhouette Plot - K-Means (k = 3)")
+fviz_silhouette(sil_km_4) + ggtitle("Silhouette Plot - K-Means (k = 4)")
+fviz_silhouette(sil_km_6) + ggtitle("Silhouette Plot - K-Means (k = 6)")
+
+
+df_clusters <- data.frame(
+  Region = rownames(df_italy2),
+  HC_Cluster_2 = as.factor(hc_clusters_2),
+  HC_Cluster_3 = as.factor(hc_clusters_3),
+  HC_Cluster_4 = as.factor(hc_clusters_4),
+  KMeans_Cluster_2 = as.factor(kmeans_2$cluster),
+  KMeans_Cluster_3 = as.factor(kmeans_3$cluster),
+  KMeans_Cluster_4 = as.factor(kmeans_4$cluster),
+  KMeans_Cluster_6 = as.factor(kmeans_6$cluster)
+)
+
+df_clusters <- df_clusters %>% arrange(HC_Cluster_2)
+
+kable(df_clusters, caption = "Comparison of Clustering Methods: Region Assignments")
+
+```
+
+Based on the clustering results, we determined the optimal number of clusters using the elbow method, which suggested testing k = 2 and k = 3. The silhouette scores were used to evaluate clustering quality, where higher scores indicate better-defined clusters. Overall, Hierarchical Clustering with k = 3 had the highest silhouette score, suggesting that a three-cluster model best fits the data. K-Means with k = 3 performed similarly, while k = 2 in both methods resulted in mixed regional assignments, making it less effective in capturing meaningful patterns.
