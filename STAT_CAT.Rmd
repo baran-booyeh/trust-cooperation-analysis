@@ -1,0 +1,325 @@
+---
+title: "StatTest_Context"
+author: "Baran Booyeh"
+date: "2025-02-12"
+output: 
+  html_document:
+    code_folding: show 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+```
+**FAMILY**
+```{r}
+
+library(tidyverse)
+library(readxl)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+
+family_trust <-  read_excel("C:/Users/BARAN/Desktop/Thesis/Data Sets/2nd_Q/Family_count.xlsx")
+
+
+str(family_trust)
+
+
+head(family_trust)
+
+```
+```{r}
+
+colnames(family_trust) <- c("Trust_Level", "Iran", "Italy")
+
+```
+```{r}
+colnames(family_trust)
+
+```
+```{r}
+family_trust <- family_trust %>%
+  filter(Trust_Level != "(N)") %>%
+  filter(Trust_Level != "No answer")%>%
+  filter(Trust_Level != "Don't know")
+  
+family_trust_pct <- family_trust %>%
+  mutate(Iran_pct = (Iran /1499 ) * 100,
+         Italy_pct = (Italy / 2282) * 100)
+
+# View the updated dataset
+print(family_trust_pct)
+
+```
+Let's see the differences visually:
+```{r}
+
+family_trust_long <- family_trust_pct %>%
+  pivot_longer(cols = c(Iran_pct, Italy_pct), 
+               names_to = "Country", 
+               values_to = "Percentage")
+
+family_trust_long <- family_trust_long %>%
+  mutate(Trust_Level = factor(Trust_Level, levels = c(
+    "Trust completely",
+    "Trust somewhat",
+    "Do not trust very much",
+    "Do not trust at all"
+  )))
+
+
+ggplot(family_trust_long, aes(x = Percentage, y = Trust_Level, fill = Country)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Family Trust Levels in Iran vs. Italy",
+       x = "Percentage of Respondents",
+       y = "Trust Level") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Iran_pct" = "pink", "Italy_pct" = "lightgreen")) +
+  coord_flip() 
+
+
+```
+#Statistical Test
+```{r}
+trust_table <- family_trust %>%
+  select(-Trust_Level) %>%
+  as.matrix()
+
+chisq.test(trust_table)
+
+```
+
+The chi-square test result indicates that there is no statistically significant difference in family trust distributions between Iran and Italy. 
+Since the p-value is much greater than 0.05, we fail to reject the null hypothesis, meaning that any observed differences in trust levels are likely due to random variation rather than a real distinction between the two countries. 
+In summary, the data does not provide enough evidence to conclude that Iranians and Italians differ in how much they trust their families.
+
+we can also we can combine the categories:
+```{r}
+family_trust_combined <- family_trust %>%
+  mutate(Trust_Level = case_when(
+    Trust_Level %in% c("Do not trust at all", "Do not trust very much") ~ "Low Trust",
+    Trust_Level %in% c("Trust somewhat", "Trust completely") ~ "High Trust",
+    TRUE ~ Trust_Level
+  ))
+
+
+trust_table_combined <- family_trust_combined %>%
+  select(-Trust_Level) %>%
+  as.matrix()
+
+chisq.test(trust_table_combined)
+
+```
+Still High p-value.
+
+
+For  better understanding, we can calculate the weighted average, by giving some trust scores to each trust level:
+
+
+```{r}
+trust_scores <- c("Trust completely" = 4, 
+                  "Trust somewhat" = 3, 
+                  "Do not trust very much" = 2, 
+                  "Do not trust at all" = 1)
+
+Family_trust_weighted <- family_trust_long %>%
+  mutate(Trust_Score = trust_scores[Trust_Level]) %>%
+  group_by(Country) %>%
+  summarize(Weighted_Average_Trust = sum(Trust_Score * Percentage) / sum(Percentage))
+
+print(Family_trust_weighted)
+```
+
+
+
+**Neighbors**
+Now let's check for Neighbors:
+```{r}
+Neighbor_trust <-  read_excel("C:/Users/BARAN/Desktop/Thesis/Data Sets/2nd_Q/Neighbors_count.xlsx")
+
+str(Neighbor_trust)
+
+head(Neighbor_trust)
+```
+```{r}
+
+colnames(Neighbor_trust) <- c("Trust_Level", "Iran", "Italy")
+
+```
+```{r}
+colnames(Neighbor_trust)
+```
+
+```{r}
+Neighbor_trust <- Neighbor_trust %>%
+  filter(Trust_Level != "(N)") %>%
+  filter(Trust_Level != "No answer")%>%
+  filter(Trust_Level != "Other missing; Multiple answers Mail (EVS)")
+```
+```{r}
+#counts to percentages 
+Neighbor_trust_pct <- Neighbor_trust %>%
+  mutate(Iran_pct = (Iran / 1499) * 100,
+         Italy_pct = (Italy / 2282) * 100)
+
+Neighbor_trust_pct
+```
+
+
+```{r}
+Neighbor_trust_long <- Neighbor_trust_pct %>%
+  pivot_longer(cols = c(Iran_pct, Italy_pct), 
+               names_to = "Country", 
+               values_to = "Percentage")
+
+Neighbor_trust_long <- Neighbor_trust_long %>%
+  mutate(Trust_Level = factor(Trust_Level, levels = c(
+    "Trust completely",
+    "Trust somewhat",
+    "Do not trust very much",
+    "Do not trust at all",
+    "Don't know"
+  )))
+
+
+ggplot(Neighbor_trust_long, aes(x = Percentage, y = Trust_Level, fill = Country)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Neighborhood Trust Levels in Iran vs. Italy",
+       x = "Percentage of Respondents",
+       y = "Trust Level") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Iran_pct" = "pink", "Italy_pct" = "lightgreen")) +
+  coord_flip()
+
+```
+
+Iranians (pink) tend to trust their neighbors more than Italians (green). The largest category, "Trust somewhat," is higher for Iran, while Italy has a greater proportion of respondents in distrust categories.
+
+#STATISTICAL TEST
+
+```{r}
+trust_table_Neighbor <- Neighbor_trust %>%
+  select(-Trust_Level) %>%
+  as.matrix()
+
+chisq.test(trust_table_Neighbor)
+```
+
+The chi-square test result indicates a highly significant difference in the levels of trust in neighbors between Iran and Italy. 
+Since the p-value is much smaller than 0.05, we reject the null hypothesis.
+It means that the differences in trust levels are not due to chance but represent a real distinction between the two countries. This suggests that Iranians and Italians have significantly different levels of trust in their neighbors, which could be influenced by factors such as social norms, historical interactions, or cultural attitudes toward neighborhoods.
+
+For more understanding of how this happened, and which country has the more trust in neighbors, let's check the weighted average, we consider Don't Know as neutral =2.5:
+```{r}
+
+trust_scores <- c("Trust completely" = 4, 
+                  "Trust somewhat" = 3, 
+                  "Do not trust very much" = 2, 
+                  "Do not trust at all" = 1,
+                  "Don't know" = 2.5)
+
+Neighbor_trust_weighted <- Neighbor_trust_long %>%
+  mutate(Trust_Score = trust_scores[Trust_Level]) %>%
+  group_by(Country) %>%
+  summarize(Weighted_Average_Trust = sum(Trust_Score * Percentage) / sum(Percentage))
+
+
+print(Neighbor_trust_weighted)
+
+```
+
+Even though that the weighted average is si close, but it sounds like Iranians trust their neighbors more than italians.
+
+**Strangers**
+
+```{r}
+Stranger_trust <-  read_excel("C:/Users/BARAN/Desktop/Thesis/Data Sets/2nd_Q/Stranger_count.xlsx")
+
+str(Stranger_trust)
+
+head(Stranger_trust)
+```
+
+```{r}
+colnames(Stranger_trust) <- c("Trust_Level", "Iran", "Italy")
+
+Stranger_trust <- Stranger_trust %>%
+  filter(Trust_Level != "(N)" & Trust_Level != "No answer" & 
+         Trust_Level != "Other missing; Multiple answers Mail (EVS)")
+```
+
+```{r}
+Stranger_trust_pct <- Stranger_trust %>%
+  mutate(Iran_pct = (Iran / 1499) * 100,
+         Italy_pct = (Italy / 2282) * 100)
+```
+
+
+```{r}
+Stranger_trust_pct
+```
+
+
+
+```{r}
+Stranger_trust_long <- Stranger_trust_pct %>%
+  pivot_longer(cols = c(Iran_pct, Italy_pct), 
+               names_to = "Country", 
+               values_to = "Percentage")
+
+Stranger_trust_long <- Stranger_trust_long %>%
+  mutate(Trust_Level = factor(Trust_Level, levels = c(
+    "Trust completely",
+    "Trust somewhat",
+    "Do not trust very much",
+    "Do not trust at all",
+    "Don't know"
+  )))
+
+ggplot(Stranger_trust_long, aes(x = Percentage, y = Trust_Level, fill = Country)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Trust in Strangers: Iran vs. Italy",
+       x = "Percentage of Respondents",
+       y = "Trust Level") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Iran_pct" = "pink", "Italy_pct" = "lightgreen")) +
+  coord_flip()  
+
+```
+It's a bit hard to say anything based on the graph only because for exampleiranians said they don't trust strangers at all more than italians while many italians said that they don't trust verymuch much more than iranians. to understand it better, we have to calculate the weighted average later.
+
+
+```{r}
+trust_table_Stranger <- Stranger_trust %>%
+  select(-Trust_Level) %>%
+  as.matrix()
+
+chisq.test(trust_table_Stranger)
+```
+The chi-square test shows a highly significant difference in trust in strangers between Iran and Italy. Since the p-value is extremely small, we reject the null hypothesis, meaning the differences are not due to chance.
+This suggests that Iranians and Italians have very different levels of trust in strangers, likely influenced by cultural and social factors.
+
+
+```{r}
+#Assign numerical scores
+# Remove "Don't know" responses
+Stranger_trust_filtered <- Stranger_trust_long %>%
+  filter(Trust_Level != "Don't know") 
+
+trust_scores <- c("Trust completely" = 4, 
+                  "Trust somewhat" = 3, 
+                  "Do not trust very much" = 2, 
+                  "Do not trust at all" = 1)
+
+Stranger_trust_weighted <- Stranger_trust_filtered %>%
+  mutate(Trust_Score = trust_scores[Trust_Level]) %>%
+  group_by(Country) %>%
+  summarize(Weighted_Average_Trust = sum(Trust_Score * Percentage) / sum(Percentage))
+
+print(Stranger_trust_weighted)
+
+```
+
+based on the weighted average, italians trust people whom they meet for the first time more than iranians.
