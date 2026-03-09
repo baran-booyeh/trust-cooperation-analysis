@@ -1,0 +1,79 @@
+---
+title: "second_Q"
+author: "Baran Booyeh"
+date: "2025-02-10"
+output: 
+  html_document:
+    code_folding: show 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+```
+
+```{r}
+library(readxl)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+```
+
+```{r}
+trust_data <- read_excel("C:/Users/BARAN/Desktop/Thesis/Data Sets/2nd_Q/Final.xlsx")
+
+trust_data <- trust_data %>%
+  rename(Trust.category = `Trust Category`,
+         Trust.level = `Trust Level`)
+
+trust_data$Context <- as.factor(trust_data$Context)
+trust_data$Country <- as.factor(trust_data$Country)
+trust_data$Trust.Category <- as.factor(trust_data$Trust.category)
+
+str(trust_data)
+
+```
+
+Remove all rows where 'Trust Category contains (N)
+```{r}
+trust_data <- trust_data %>% 
+  filter(!grepl("(N)", Trust.category))
+
+```
+
+```{r}
+trust_data2 <- trust_data %>%
+  filter(Trust.category != "Other missing; Multiple answers Mail (EVS)")
+trust_data2$Trust.category <- factor(trust_data2$Trust.category, 
+                                    levels = c("Trust completely", "Trust somewhat", 
+                                               "Do not trust very much", "Do not trust at all", 
+                                               "Don't know"))
+custom_colors <- c("Trust completely" = "#33a02c",   
+                   "Trust somewhat" = "#1f78b4",     
+                   "Do not trust very much" = "#ff7f00",  
+                   "Do not trust at all" = "#e31a1c",     
+                   "Don't know" = "#6a3d9a") 
+ggplot(trust_data2, aes(x=Context, y=Trust.level, fill=Trust.category)) +
+  geom_bar(stat="identity", position="fill") +  
+  facet_wrap(~ Country) +  
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = custom_colors) +  
+  labs(title="Trust Levels in Iran vs. Italy Across Different Contexts",
+       x="Context", y="Proportion of Responses") +
+  theme_minimal()
+
+```
+```{r}
+trust_data2$Trust.category <- factor(trust_data2$Trust.category, 
+                                    levels = c("Trust completely", "Trust somewhat", 
+                                               "Do not trust very much", "Do not trust at all", 
+                                               "Don't know"))
+ggplot(trust_data2, aes(x=Context, y=Trust.level, fill=Country)) +
+  geom_bar(stat="identity", position=position_dodge(width=0.8)) +  
+  facet_wrap(~ Trust.category) + 
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(title="Trust Levels in Iran vs. Italy Across Different Contexts",
+       x="Context", y="Proportion of Responses") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
